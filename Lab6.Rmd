@@ -1,0 +1,120 @@
+---
+title: "Lab6"
+author: "sbsambado"
+date: "12/11/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(car)
+library(onewaytests)
+
+penguins <- read_csv("penguins.csv")
+
+```
+
+
+EDA
+```{r}
+
+
+counts <- with(penguins, table(species, sex))
+#View(counts)
+
+# Update species information (common name) using case_when()
+
+penguins2 <- penguins %>% 
+  mutate(common_name = 
+           case_when (
+             species == "Chinstrap penguin (Pygoscelis antarctica)" ~ "Chinstrap",
+             species == "Gentoo penguin (Pygoscelis papua)" ~ "Gentoo",
+             species == "Adelie Penguin (Pygoscelis adeliae)" ~ "Adelie")) %>% 
+  select(-species) %>% 
+  filter(sex == "FEMALE")
+  
+```
+
+
+Then...
+
+- exploratory graphs
+- summary statistics
+- Levene's test (equal variances)
+- one-way ANOVA (type III)
+- use agricolae package to get groups
+
+```{r}
+
+
+hists <- ggplot(penguins2, aes(x = flipper_length)) +
+  geom_histogram(bins = 10) +
+  facet_wrap(~ common_name, scale = "free")
+hists 
+
+qqs <- ggplot(penguins2, aes(sample = flipper_length)) +
+  geom_qq(bins = 10) +
+    facet_wrap(~ common_name, scale = "free")
+
+qqs
+
+
+# All groups approx. normally distributed. How do they look compared to each other?
+
+
+box <- ggplot(penguins2, aes(x = common_name, y = flipper_length)) +
+  geom_boxplot(width = .2) +
+  geom_jitter(width = .1, alpha = .5, aes(color = common_name))
+
+box
+```
+
+Levene's test for equal variances (and keep in mind the general rule: if the greatest variances is < 4x bigger than the smallest variance, then usually those are "close enough" to assume equal variance)
+
+```{r}
+variances <- penguins2 %>% 
+  group_by(common_name) %>% 
+  summarize(
+    mean = mean(flipper_length),
+    sd = sd(flipper_length),
+    variance = var(flipper_length)
+  )
+variances # Definitely close enough (also see that this lines up with Levene's test)
+
+
+penguin_levene <- leveneTest(flipper_length ~ common_name, data = penguins2)
+penguin_levene # pr(>F) = 0.05782 (p > 0.05)
+
+#Variances are not significantly different
+
+```
+
+One way Anova (Type III)
+```{r}
+
+
+penguin_aov <- aov(flipper_length ~ common_name, data = penguins2)
+penguin_sum <- summary(penguin_aov)
+penguin_ph <- TukeyHSD(penguin_aov)
+
+
+## Testing other options (for a variation that allows to call values using in-line references...) There's one aov.test() in the new 'onewaytests' package, BUT that doesn't have Tukey's for a post-hoc pairwise comparison...
+penguin_factor <- data.frame(
+  penguins2 %>% 
+  mutate(name_factor = as.factor(common_name),
+         flip_numeric = flipper_length
+         )
+  )
+aov2 <- aov.test(flip_numeric ~ name_factor, data = penguin_factor)
+# Yes, there are at least two means that differ significantly. 
+# Our next question: which ones? 
+
+# Bonferroni correction:
+post_hoc <- paircomp(aov2, adjust.method = "bonferroni")
+# All means are significantly different from each other! 
+
+
+```
+
