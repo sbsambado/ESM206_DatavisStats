@@ -118,3 +118,6 @@ post_hoc <- paircomp(aov2, adjust.method = "bonferroni")
 
 ```
 
+How do we report this outcome?
+
+Mean flipper lengths for Adelie (mean ± sd, n = ), Gentoo (mean ± sd, n = ), and Chinstrap (mean ± sd, n =) penguins all differed significantly across all groups by one-way ANOVA (F(`r aov2$parameter`) = `r aov2$statistic`, *p* < 0.001, $\alpha$ = 0.05) with post-hoc pairwise comparison by Bonferroni correction (p < 0.001 for all pairwise comparisons).
