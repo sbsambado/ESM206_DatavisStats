@@ -1,0 +1,115 @@
+---
+title: "Lab 2"
+author: "sbsambado"
+date: "12/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+
+
+library(tidyverse)
+library(RColorBrewer)
+
+sb_pest <- read_csv("sb_pest.csv")
+```
+
+Basic EDA
+```{r}
+
+View(sb_pest)
+names(sb_pest)
+summary(sb_pest)
+
+sb_simple <- sb_pest %>% 
+  select(county = COUNTY_NAME, crop = SITE_NAME, chemical = CHEMICAL_NAME, 
+         pounds = POUNDS_CHEMICAL_APPLIED) %>% 
+  filter(pounds != "N/A") %>%  # or !is.na(pounds)
+  select(county, chemical, pounds, crop) %>% 
+  mutate(pounds = as.numeric(pounds))
+
+#View(sb_simple)
+class(sb_simple$pounds)
+names(sb_simple)
+```
+
+Summary stats and group_by
+```{r fig.width = 4, fig.height = 4}
+
+grapes_sumary <- sb_simple %>% 
+  group_by(chemical) %>% 
+  summarize(
+    total_applied = sum(pounds),
+    max_applied = max(pounds)
+    ) %>% 
+  arrange(-total_applied) %>% 
+  head(10)
+  
+
+# lets export data frame as its own file (csv)?
+
+write_csv(grapes_sumary, "grapes_summary.csv")
+
+
+top_10_col <- ggplot(grapes_sumary,
+                     aes(x = chemical, 
+                         y = total_applied)) +
+  geom_col() +
+  labs(x = "chem name", y = "total applied (pounds") +
+  coord_flip()
+
+top_10_col
+
+grapes_sumary_factor <- grapes_sumary %>% 
+  mutate(chemical = factor(chemical, levels = chemical))
+
+
+top_10_ordered <- ggplot(grapes_sumary_factor,
+                     aes(x = chemical, 
+                         y = total_applied)) +
+  geom_col(aes(fill = chemical), show.legend = FALSE) +
+  coord_flip() +
+  scale_fill_brewer(palette = "Spectral")+
+  theme_classic() +
+  scale_x_discrete(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  labs(x = "", y = "total applied (pounds") 
+top_10_ordered
+
+
+
+
+sb_glyphosate <- sb_simple %>% 
+  filter(chemical == "GLYPHOSATE, ISOPROPYLAMINE SALT")
+
+glyphosate_hist <- ggplot(sb_glyphosate , aes(x = pounds)) +
+  geom_histogram(bins = 12, boundary = 0, color = "dodgerblue", fill = "dodgerblue4") +
+  labs(x = "lbs", y = "freq (n = 197)", title = "sb wine graphs") +
+  theme_classic() +
+  scale_x_discrete(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0), limits = c(0,150)) 
+ 
+ glyphosate_hist
+  
+
+ 
+ InsectSprays
+
+ insect_boxplot <- ggplot(InsectSprays, aes(x = spray, y = count))+
+   geom_boxplot(fill = "gray90") +
+   theme_classic() +
+   labs(x = "spray type", y = "insect coutns") +
+   geom_jitter(width = 0.1, alpha = .4, aes(color = spray))
+  insect_boxplot 
+  
+  faithful_plot <- ggplot(faithful, aes(x = waiting, y = eruptions)) +
+    geom_point() +
+    theme_classic()
+    faithful_plot
+```
+
