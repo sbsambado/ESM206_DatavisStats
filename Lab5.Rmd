@@ -1,0 +1,130 @@
+---
+title: "Lab5"
+author: "sbsambado"
+date: "12/11/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(pwr)
+library(knitr)
+library(kableExtra)
+library(plotly)
+library(extrafont)
+library(ggrepel)
+
+mortality <- read_csv("drug_mortality.csv")
+income <- read_csv("state_income.csv")
+```
+
+
+### 1. Pipe an F-test and a t-test, with in-line references
+
+We want to know, are chicks fed 'horsebean' significantly smaller than those fed 'linseed'?
+
+```{r}
+
+chickwts
+chick_ftest <- chickwts %>% 
+  filter(feed == "horsebean" | feed == "linseed") %>% 
+  var.test(weight ~ feed, data = .) # p-value = 0.003435
+
+
+chick_ttest <- chickwts %>% 
+  filter(feed == "horsebean" | feed == "linseed") %>% 
+  t.test(weight ~ feed, data = ., alternative = "less") # p = 0.003435 ( p < 0.05)
+
+# Weights for chicks fed horsebean are significantly lower than those fed linseed
+```
+
+```{r}
+graph_2 <- mortality %>% 
+  filter(year == 2015, 
+         ages == "All Ages", 
+         sex == "Both Sexes", 
+         race_and_hispanic_origin == "All Races-All Origins", 
+         state != "United States") %>% 
+  mutate(highlight = ifelse(state == "Kentucky", "Yes", "No")) %>%
+  arrange(-death_rate) %>% 
+  head(10) %>% 
+    ggplot(aes(x = reorder(state, death_rate), y = death_rate)) +
+    geom_col(aes(fill = highlight)) +
+    labs(x = "", 
+         y = "Drug-related death rates (2015)\n(deaths per 100,000 people)",
+         title = "United States Drug-Related Mortality Rates",
+         subtitle = "10 Highest Mortality Rates (2015)") +
+    theme_classic() +
+    scale_y_continuous(expand = c(0,0), 
+                       limits = c(0,40), 
+                       breaks = seq(0,40,by = 10)) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+          axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 20)),
+          legend.position = "none",
+          text = element_text(family = "Times New Roman")) +
+    scale_fill_manual(values = c("gray60","red"))
+graph_2
+
+# Use ggplotly to make it interactive
+# Use tooltip to specify what you want to show up in the hovering menu (this can be customized, we'll just do simple customization here...)
+ggplotly(graph_2, tooltip = "y")
+
+```
+
+```{r message = FALSE}
+
+
+deaths_2015 <- mortality %>% 
+  filter(year == 2015,
+         ages == "All Ages",
+         sex == "Both Sexes",
+         race_and_hispanic_origin == "All Races-All Origins")
+
+deaths_income <- full_join(deaths_2015, income) %>% 
+  select(state, death_rate, med_income, population)
+
+death_income_scatter <- ggplot(filter(deaths_income, med_income > 60000),
+                               aes(x = med_income,
+                                   y = death_rate,
+                                   label = state)) +
+  geom_point(aes(size = population, color = state), alpha = 0.7) +
+  # geom_text() Try this first - show that they all overlap (centered over points)
+  labs(x = "2016 Median Household Income (USD)", y = "Drug Related Death Rate (deaths per 100,000)") +
+  geom_text_repel(size = 3, color = "gray50") +
+  theme_classic() +
+  theme(legend.position = "none") 
+  
+death_income_scatter
+```
+
+option + command + i for inline code
+
+# Make a table
+ striped makes stripes (gray background rows)
+ hover will highlight the row you're on 
+ condensed makes row height smaller
+ 
+```{r}
+
+
+ca_table <- mortality %>% 
+  filter(year >= 2010,
+         state == "California",
+         ages == "All Ages",
+         sex == "Both Sexes",
+         race_and_hispanic_origin == "All Races-All Origins") %>% 
+  select(year, deaths, population, death_rate)
+
+
+ca_final <- kable(ca_table,
+                  col.names = c("Year", "Deaths", "Population", "Death Rate")) %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"),
+                full_width = FALSE) %>% 
+  row_spec(row = 4, bold = T, color = "magenta", backgroun = "yellow") %>% 
+  column_spec(column = 4, bold = T, color = "purple")
+
+ca_final
+```
+
