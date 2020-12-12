@@ -1,0 +1,105 @@
+---
+title: "Lab7"
+author: "sbsambado"
+date: "12/11/2020"
+output: html_document
+---
+
+random fact
+
+read_csv reads in tibbles
+
++ load faster
++ don't change input types
++ allow you to have columns as lists
++ allow non-standard variable names (variables can start with number and contain spaces)
++ never create row names
+
+
+read.csv reads in dataframe
+
+**you should load tibble instead of data frame** 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(magrittr)
+
+gc_df <- read_csv("gc_df.csv")
+kermit <- read_csv("kermit.csv")
+
+
+```
+
+```{r}
+
+get_guns <- gc_df %>% 
+  filter(gender != "NA", make_get_guns != "NA") %>% 
+  count(gender, make_get_guns) %>% 
+  spread(make_get_guns, n) %>% 
+  select(-gender)
+
+rownames(get_guns) <- c("Female", "Male")
+
+# Tell it what variable you want to spread out into multiple columns (KEY), and what the values should be associated with it (Freq)...this is called a 'key-value pair'
+# Now this looks like a contingency table. 
+
+```
+
+# What we're really asking: 
+Do PROPORTIONS of respondents who choose "make it more difficult","make it less difficult", or "same" to get guns differ between males and females?
+
+# First, let's look at the actual proportions:
+
+# Could also do this using the tidyverse, using group_by + mutate, but we'll use prop.table (which really wants thing in the class of 'matrix'):
+
+```{r}
+
+guns_prop <- round(prop.table(as.matrix(get_guns),1),3)
+
+# Perform chi-square test for independence (on the COUNT data - NOT on the proportions!)
+guns_x2 <- chisq.test(get_guns)
+guns_x2 # p < 2.2e-16
+
+guns_x2$stdres # If beyond 2, pay attention for significance...
+# There IS a significant association between response and gender! Look at 'Values' section to see what things you can call from the output.
+
+"Recommended government action on gun purchasing differed significantly between male and female respondents ($\chi^2$(`r guns_x2$parameter`) = `r guns_x2$statistic`, *p* = `guns_x2$p.value`, $\alpha$ = 0.05. Most notably, a much higher proportion of female respondents (57.4%) recommend making it more difficult to purchase guns, compared to 40.4% for male respondents."
+
+```
+
+
+Rank based tests
+
+```{r}
+
+kermit_hist <- ggplot(kermit, aes(x = Score.pre)) +
+  geom_histogram(bins = 4) +
+  facet_wrap(~ Gender)
+
+kermit_hist
+
+# perform Mann-Whitney U to compare pre-presentation kermit rankings between M / F respondents:
+
+mwu_kermit <- kermit %>% 
+  wilcox.test(Score.pre ~ Gender, data = .)
+mwu_kermit # p = .4001 (p > 0.05)
+
+# There is no significant difference in kermit ranks for Male and Female respondents. 
+#Ranks comparison by Mann-Whitney U reveals no significant difference in pre-presentation Kermit ranks for male and female respondents (W = `r mwu_kermit$statistic`, *p* = `r mwu_kermit$p.value`, $\alpha = 0.05$)
+
+```
+
+Wilcoxon Signed Rank (paired comparison of ranked data). 
+
+Question: "Is there a significant difference in pre- and post-presentation kermit rankings?"
+
+```{r}
+wsr_kermit <- wilcox.test(kermit$Score.pre, kermit$Score.post, paired = TRUE)
+wsr_kermit # p = 0.3143 (p > 0.05)
+
+# There is NO significant difference in rankings before and after the presentation. 
+
+```
+
+
