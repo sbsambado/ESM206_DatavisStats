@@ -1,0 +1,161 @@
+---
+title: "Lab8"
+author: "sbsambado"
+date: "12/11/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+library(tidyverse)
+
+salmon <- read_csv("salmon.csv")
+
+
+```
+
+
+Exploratory scatterplot
+
+
+If we're going to use linear regression, we should have reason to think that a linear relationship exists between variables. So go ahead and look at the data (year on x-axis, imports on y-axis).
+
+```{r}
+
+gg_salmon <- ggplot(salmon, aes(x = year, y = salmon_fresh)) +
+  geom_point()
+```
+
+###5. Linear regression in R
+
+The general syntax for linear regression in R is:
+
+      model_name <- lm(y_variable ~ x_variable, data = df_name)
+
+So, if I have a data frame called 'salmon' containing variables 'year' and 'salmon_fresh,' I would use:
+
+      salmon_model <- lm(salmon_fresh ~ year, data = salmon)
+      
+a. Perform linear regression to describe the trend in total volume of fresh salmon imported to the U.S. from 1990 - 2017. 
+
+```{r}
+
+salmon_model <- lm(salmon_fresh ~ year, data = salmon)
+```
+
+b. Call the model name to see the intercept and slope for the model. Recall:
+
+      $y = \beta_0 + \beta_1x + \epsilon$
+
+c. Write out the model equation, including the actual variables and coefficients instead of $\beta$ and x/y. For example (these are not the actual model coefficients you'll find): 
+
+      $Imports (tons) = -1.498e+07 + 7.550e+03(Year)$
+      
+d. Think about the model equation that you found to describe trends in salmon imports. In your markdown document, answer the following in 1-sentence each: 
+
+- What does the *slope* mean in the context of this model? 
+- What does the *y-intercept* mean in the context of this model? Why is that concerning? What does this mean about *extrapolating* this model for past values?
+
+
+###6. Model diagnostics
+
+Use plot(model_name) to view model diagnostics in the 'Plots' tab (press Enter in the Console to contine to subsequent diagnostic plots). Explore the diagnostic plots to answer the following: 
+
+- Do residuals appear normally distributed?
+- Any concerns about heteroscedasticity or outliers?
+
+```{r}
+
+par(mfrow = c(2,2))
+plot(salmon_model)
+# No issues with normality of residuals or heteroscedasticity
+
+```
+
+
+###7. Explore model fit and significance
+
+Use summary(model_name) to see the detailed model information, including model fit information (e.g. $R^2$ and coefficient standard errors) and statistics.
+
+
+```{r}
+summary(salmon_model)
+```
+
+
+###8. Prepare a final graph
+
+See the example code below to create a final graph of the linear regression model with the original data, model and 95% confidence interval for predictions.
+
+The code and graph shown below are created with:
+
+- An original data frame called 'salmon'
+- ...which contains x and y variables 'year' and 'salmon_fresh'
+- ...for which a linear model was found, called 'salmon_model'
+
+```{r}
+
+salmon_final_graph <- ggplot(salmon, aes(x = year, y = salmon_fresh)) +
+  geom_point() +
+  geom_smooth(method = lm, se = TRUE, size = .5, color = "grey20") +
+  theme_bw() +
+  scale_x_continuous(expand = c(0,0), limits = c(1990, 2017)) +
+  labs(x = "year", y = "annual salmon imports\n(1,000 pounds)")
+
+salmon_final_graph
+
+```
+
+###9. Make predictions using the model
+
+Let's say we want to use our model to make predictions for U.S. fresh salmon imports in years 2022, 2024, 2026 and 2028. 
+
+- Option 1 (not recommended): Plug each of those years into the model equation separately to calculate the expected U.S. imports.
+
+- Option 2 (recommended): Create a data frame containing the 'new values' that you want to make predictions for, feed that into the predict() function
+
+Let's use Option 2. First, we'll make a data frame called 'new_years' containing the sequence of years that we want to make predictions for. Notice that the column name we create is the **SAME** as the variable name 'year' that the model uses.
+
+```{r}
+new_years <- data.frame(year = c(2022, 2024, 2026, 2028))
+new_years
+```
+
+Then feed that data frame into the predict() function, letting it know which model to use to make predictions for the new values.
+
+Include interval = "confidence" to also report the lower and upper bounds of the 95% CI for model fit at each year.
+
+```{r}
+future_predict <- predict(salmon_model, newdata = new_years, interval = "confidence")
+future_predict
+```
+
+
+Bind the prediction outcomes (those are the values in column 'fit') with the 'new_years' data to actually create a useful table of predicted imports and upper and lower CI:
+
+```{r}
+predictions <- data.frame(new_years, future_predict)
+predictions
+```
+
+
+###10. Find Pearson's *r* (correlation)
+
+Use the cor.test() function to find Pearson's *r* for the linear relationship described between year and salmon imports. 
+
+Generally, if you're trying to explore the correlation between variable_1 and variable_2 in data frame 'df', the function syntax is as follows:
+
+      test_name <- cor.test(df$variable_1, df$variable_2)
+      
+a. Calculate Pearson's *r* for the year vs. salmon imports linear trend.
+```{r}
+
+salmon_cor <- cor.test(salmon$year, salmon$salmon_fresh)
+salmon_cor # p < 2.2e-16 ; cor = .9735
+
+# A very strong positive correlation between year and imports
+
+```
+
